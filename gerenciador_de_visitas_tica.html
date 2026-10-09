@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Preços de Supermercados</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center gap-3">
+                    <div class="bg-white text-indigo-600 p-2 sm:p-2.5 rounded-xl shadow-inner">
+                        <i class="fa-solid fa-basket-shopping text-lg sm:text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base sm:text-xl font-bold tracking-tight">Comparador de Preços</h1>
+                        <p class="text-[11px] sm:text-xs text-indigo-200">Encontre onde é mais barato economizar</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <nav class="flex bg-indigo-700/60 p-1.5 rounded-xl gap-1 w-full sm:w-auto justify-center">
+                <button onclick="switchTab('home')" id="btn-home" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all bg-white text-indigo-700 shadow-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-house"></i> Home
+                </button>
+                <button onclick="switchTab('markets')" id="btn-markets" class="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all text-indigo-100 hover:text-white flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-store"></i> Mercados
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        
+        <!-- MESSAGE BOX / TOAST -->
+        <div id="toast" class="fixed bottom-5 right-4 left-4 sm:left-auto sm:right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg transition-all duration-300 transform translate-y-20 opacity-0 z-50 flex items-center gap-3">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+            <span id="toast-msg" class="text-sm font-medium">Ação realizada com sucesso!</span>
+        </div>
+
+        <!-- TAB 1: HOME & SEARCH -->
+        <section id="tab-home" class="space-y-4 sm:space-y-6">
+            <!-- Search & Filter Banner -->
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200/80">
+                <h2 class="text-base sm:text-lg font-bold text-slate-900 mb-1 sm:mb-2">O que você está procurando hoje?</h2>
+                <p class="text-xs sm:text-sm text-slate-500 mb-3 sm:mb-4">Pesquise por um produto para comparar preços em todos os mercados cadastrados. Os mais baratos aparecem primeiro!</p>
+                
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 sm:pl-4 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-search"></i>
+                    </span>
+                    <input type="text" id="search-input" oninput="handleSearch()" placeholder="Ex: Arroz, Leite, Café..." 
+                           class="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm">
+                </div>
+            </div>
+
+            <!-- Search Results Container -->
+            <div id="search-results-container" class="hidden space-y-3 sm:space-y-4">
+                <div class="flex justify-between items-center px-1">
+                    <h3 class="font-bold text-slate-800 text-sm sm:text-md">Resultados da Pesquisa</h3>
+                    <button onclick="clearSearch()" class="text-xs text-indigo-600 hover:underline font-medium">Limpar busca</button>
+                </div>
+                <div id="search-results-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    <!-- Dynamic search results -->
+                </div>
+            </div>
+
+            <!-- All Markets Overview -->
+            <div id="markets-overview-section">
+                <div class="flex justify-between items-center mb-3 sm:mb-4 px-1">
+                    <h3 class="font-bold text-slate-800 text-sm sm:text-md flex items-center gap-2">
+                        <i class="fa-solid fa-shop text-indigo-600"></i> Mercados Cadastrados & Produtos
+                    </h3>
+                    <span id="market-count-badge" class="bg-indigo-50 text-indigo-700 text-xs font-semibold px-2.5 py-1 rounded-full">0 mercados</span>
+                </div>
+                
+                <div id="home-markets-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                    <!-- Filled dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: MARKETS MANAGEMENT -->
+        <section id="tab-markets" class="hidden space-y-4 sm:space-y-6">
+            <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200/80">
+                <h2 class="text-base sm:text-lg font-bold text-slate-900 mb-1">Adicionar Novo Mercado</h2>
+                <p class="text-xs sm:text-sm text-slate-500 mb-3 sm:mb-4">Cadastre um estabelecimento para começar a registrar seus produtos e preços.</p>
+                
+                <form onsubmit="addMarket(event)" class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-grow">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 sm:pl-4 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-store"></i>
+                        </span>
+                        <input type="text" id="market-name-input" placeholder="Nome do Mercado (Ex: Supermercado Extra...)" required
+                               class="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm">
+                    </div>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-plus"></i> Adicionar Mercado
+                    </button>
+                </form>
+            </div>
+
+            <!-- List of Markets with product forms -->
+            <div class="space-y-3 sm:space-y-4">
+                <h3 class="font-bold text-slate-800 text-sm sm:text-md px-1">Gerenciar Produtos por Mercado</h3>
+                <div id="manage-markets-list" class="space-y-4 sm:space-y-6">
+                    <!-- Filled dynamically -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400 mt-12 px-4">
+        <p>Gestão Inteligente de Preços &copy; 2026. Seus dados ficam salvos localmente no navegador.</p>
+    </footer>
+
+    <script>
+        // State Management
+        let markets = JSON.parse(localStorage.getItem('supermarket_data')) || [
+            {
+                id: '1',
+                name: 'Supermercado Exemplo',
+                products: [
+                    { id: 'p1', name: 'Arroz 5kg', price: 24.90 },
+                    { id: 'p2', name: 'Leite Integral 1L', price: 4.80 },
+                    { id: 'p3', name: 'Café 500g', price: 16.50 }
+                ]
+            }
+        ];
+
+        // Save data to localStorage
+        function saveData() {
+            try {
+                localStorage.setItem('supermarket_data', JSON.stringify(markets));
+            } catch (e) {
+                console.error('Erro ao salvar no localStorage:', e);
+            }
+        }
+
+        // Show Toast Notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastMsg.textContent = message;
+            if (type === 'success') {
+                toastIcon.className = 'fa-solid fa-circle-check text-emerald-400';
+            } else {
+                toastIcon.className = 'fa-solid fa-circle-exclamation text-rose-400';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Tab Navigation
+        function switchTab(tabId) {
+            const homeTab = document.getElementById('tab-home');
+            const marketsTab = document.getElementById('tab-markets');
+            const btnHome = document.getElementById('btn-home');
+            const btnMarkets = document.getElementById('btn-markets');
+
+            if (tabId === 'home') {
+                homeTab.classList.remove('hidden');
+                marketsTab.classList.add('hidden');
+                
+                btnHome.className = 'flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all bg-white text-indigo-700 shadow-sm flex items-center justify-center gap-2';
+                btnMarkets.className = 'flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all text-indigo-100 hover:text-white flex items-center justify-center gap-2';
+                renderHome();
+            } else {
+                homeTab.classList.add('hidden');
+                marketsTab.classList.remove('hidden');
+                
+                btnMarkets.className = 'flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all bg-white text-indigo-700 shadow-sm flex items-center justify-center gap-2';
+                btnHome.className = 'flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all text-indigo-100 hover:text-white flex items-center justify-center gap-2';
+                renderManageMarkets();
+            }
+        }
+
+        // Add Market Function
+        function addMarket(e) {
+            e.preventDefault();
+            const input = document.getElementById('market-name-input');
+            const name = input.value.trim();
+            if (!name) return;
+
+            const newMarket = {
+                id: Date.now().toString(),
+                name: name,
+                products: []
+            };
+
+            markets.push(newMarket);
+            saveData();
+            input.value = '';
+            showToast('Mercado salvo no navegador com sucesso!');
+            renderManageMarkets();
+        }
+
+        // Delete Market Function
+        function deleteMarket(marketId) {
+            if (window.confirm('Tem certeza que deseja apagar este mercado e seus produtos? A alteração será salva no navegador.')) {
+                markets = markets.filter(m => m.id !== marketId);
+                saveData();
+                showToast('Mercado removido e dados atualizados!', 'info');
+                renderManageMarkets();
+            }
+        }
+
+        // Add Product to Market
+        function addProduct(e, marketId) {
+            e.preventDefault();
+            const form = e.target;
+            const nameInput = form.querySelector('.prod-name');
+            const priceInput = form.querySelector('.prod-price');
+
+            const productName = nameInput.value.trim();
+            const productPrice = parseFloat(priceInput.value);
+
+            if (!productName || isNaN(productPrice)) return;
+
+            const market = markets.find(m => m.id === marketId);
+            if (market) {
+                market.products.push({
+                    id: 'prod_' + Date.now() + Math.random().toString(36).substring(2, 7),
+                    name: productName,
+                    price: productPrice
+                });
+                saveData();
+                nameInput.value = '';
+                priceInput.value = '';
+                showToast('Produto salvo no navegador!');
+                renderManageMarkets();
+            }
+        }
+
+        // Delete Product from Market
+        function deleteProduct(marketId, productId) {
+            const market = markets.find(m => m.id === marketId);
+            if (market) {
+                market.products = market.products.filter(p => p.id !== productId);
+                saveData();
+                showToast('Produto removido do navegador.', 'info');
+                renderManageMarkets();
+            }
+        }
+
+        // Calculate price comparisons across all markets for a given product name
+        function getPriceComparison(productName, currentPrice) {
+            const normalizedTarget = productName.trim().toLowerCase();
+            let allPricesForThisProduct = [];
+
+            markets.forEach(m => {
+                m.products.forEach(p => {
+                    if (p.name.trim().toLowerCase() === normalizedTarget) {
+                        allPricesForThisProduct.push(p.price);
+                    }
+                });
+            });
+
+            if (allPricesForThisProduct.length <= 1) {
+                return { hasMultiple: false, badge: null };
+            }
+
+            const minPrice = Math.min(...allPricesForThisProduct);
+            const maxPrice = Math.max(...allPricesForThisProduct);
+
+            if (currentPrice === minPrice && minPrice !== maxPrice) {
+                return {
+                    hasMultiple: true,
+                    badge: '<span title="Mais barato entre os mercados" class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md"><i class="fa-solid fa-arrow-trend-down"></i> Mais barato</span>'
+                };
+            } else if (currentPrice === maxPrice && minPrice !== maxPrice) {
+                return {
+                    hasMultiple: true,
+                    badge: '<span title="Mais caro entre os mercados" class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md"><i class="fa-solid fa-arrow-trend-up"></i> Mais caro</span>'
+                };
+            } else {
+                return {
+                    hasMultiple: true,
+                    badge: '<span title="Preço intermediário" class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md"><i class="fa-solid fa-equals"></i> Intermediário</span>'
+                };
+            }
+        }
+
+        // Render Home View
+        function renderHome() {
+            const container = document.getElementById('home-markets-list');
+            const badgeCount = document.getElementById('market-count-badge');
+            badgeCount.textContent = `${markets.length} mercado${markets.length !== 1 ? 's' : ''}`;
+
+            if (markets.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full bg-white p-8 sm:p-12 rounded-2xl text-center border border-dashed border-slate-300">
+                        <div class="text-indigo-300 text-3xl sm:text-4xl mb-3"><i class="fa-solid fa-basket-shopping"></i></div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-700 mb-1">Nenhum mercado cadastrado</h4>
+                        <p class="text-xs text-slate-400 mb-4">Vá na aba "Mercados" para adicionar estabelecimentos e produtos.</p>
+                        <button onclick="switchTab('markets')" class="bg-indigo-600 text-white text-xs font-semibold px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-all">Ir para Mercados</button>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            markets.forEach(market => {
+                html += `
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200/85 overflow-hidden flex flex-col">
+                        <div class="bg-slate-50 px-4 sm:px-5 py-3.5 sm:py-4 border-b border-slate-100 flex justify-between items-center gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2 truncate">
+                                <i class="fa-solid fa-store text-indigo-600 flex-shrink-0"></i> <span class="truncate">${escapeHtml(market.name)}</span>
+                            </h4>
+                            <span class="text-xs bg-slate-200/70 text-slate-600 px-2.5 py-1 rounded-full font-medium flex-shrink-0">
+                                ${market.products.length} prod.
+                            </span>
+                        </div>
+                        <div class="p-4 sm:p-5 flex-grow">
+                `;
+
+                if (market.products.length === 0) {
+                    html += '<p class="text-xs text-slate-400 italic text-center py-4">Nenhum produto cadastrado neste mercado.</p>';
+                } else {
+                    html += '<ul class="divide-y divide-slate-100">';
+                    const sortedProducts = [...market.products].sort((a,b) => a.name.localeCompare(b.name));
+                    sortedProducts.forEach(prod => {
+                        const comp = getPriceComparison(prod.name, prod.price);
+                        html += `
+                            <li class="py-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1.5 sm:gap-2">
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium text-slate-800">${escapeHtml(prod.name)}</span>
+                                    <div class="mt-0.5">${comp.badge || ''}</div>
+                                </div>
+                                <span class="text-xs sm:text-sm font-bold text-slate-900 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100 self-start sm:self-auto">
+                                    R$ ${prod.price.toFixed(2).replace('.', ',')}
+                                </span>
+                            </li>
+                        `;
+                    });
+                    html += '</ul>';
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Render Manage Markets View
+        function renderManageMarkets() {
+            const container = document.getElementById('manage-markets-list');
+
+            if (markets.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white p-6 sm:p-8 rounded-2xl text-center border border-dashed border-slate-300">
+                        <p class="text-xs sm:text-sm text-slate-400">Nenhum mercado cadastrado ainda. Use o formulário acima para criar um.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            markets.forEach(market => {
+                html += `
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200/85 p-4 sm:p-6 space-y-4">
+                        <div class="flex justify-between items-center pb-3 border-b border-slate-100 gap-2">
+                            <h4 class="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2 truncate">
+                                <i class="fa-solid fa-store text-indigo-600 flex-shrink-0"></i> <span class="truncate">${escapeHtml(market.name)}</span>
+                            </h4>
+                            <button onclick="deleteMarket('${market.id}')" class="text-rose-500 hover:text-rose-700 text-xs font-medium flex items-center gap-1 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg transition-all flex-shrink-0">
+                                <i class="fa-solid fa-trash"></i> <span class="hidden sm:inline">Excluir Mercado</span>
+                            </button>
+                        </div>
+
+                        <!-- Add product form inside market -->
+                        <form onsubmit="addProduct(event, '${market.id}')" class="flex flex-col sm:flex-row gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+                            <input type="text" placeholder="Nome do produto (ex: Leite)" required 
+                                   class="prod-name flex-grow px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="number" step="0.01" min="0" placeholder="Preço (R$)" required 
+                                   class="prod-price w-full sm:w-32 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <button type="submit" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-plus"></i> Inserir
+                            </button>
+                        </form>
+
+                        <!-- Products list inside manage -->
+                        <div class="space-y-2">
+                `;
+
+                if (market.products.length === 0) {
+                    html += '<p class="text-xs text-slate-400 italic py-2">Nenhum produto cadastrado neste mercado.</p>';
+                } else {
+                    html += '<div class="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">';
+                    market.products.forEach(prod => {
+                        html += `
+                            <div class="px-3 sm:px-4 py-2.5 flex justify-between items-center bg-white hover:bg-slate-50/50 transition-colors gap-2">
+                                <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 truncate">
+                                    <span class="text-sm font-medium text-slate-800 truncate">${escapeHtml(prod.name)}</span>
+                                    <span class="text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md self-start sm:self-auto">
+                                        R$ ${prod.price.toFixed(2).replace('.', ',')}
+                                    </span>
+                                </div>
+                                <button onclick="deleteProduct('${market.id}', '${prod.id}')" class="text-slate-400 hover:text-rose-600 p-1.5 transition-colors flex-shrink-0" title="Remover produto">
+                                    <i class="fa-solid fa-trash text-xs"></i>
+                                </button>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Search Product Logic Across All Markets (Sorted by cheapest first)
+        function handleSearch() {
+            const query = document.getElementById('search-input').value.trim().toLowerCase();
+            const resultsContainer = document.getElementById('search-results-container');
+            const overviewSection = document.getElementById('markets-overview-section');
+            const resultsGrid = document.getElementById('search-results-grid');
+
+            if (!query) {
+                resultsContainer.classList.add('hidden');
+                overviewSection.classList.remove('hidden');
+                return;
+            }
+
+            resultsContainer.classList.remove('hidden');
+            overviewSection.classList.add('hidden');
+
+            let allMatchedProducts = [];
+
+            markets.forEach(market => {
+                market.products.forEach(prod => {
+                    if (prod.name.toLowerCase().includes(query)) {
+                        allMatchedProducts.push({
+                            marketName: market.name,
+                            marketId: market.id,
+                            product: prod
+                        });
+                    }
+                });
+            });
+
+            // Sort by price ascending (cheapest first)
+            allMatchedProducts.sort((a, b) => a.product.price - b.product.price);
+
+            if (allMatchedProducts.length === 0) {
+                resultsGrid.innerHTML = `
+                    <div class="col-span-full bg-white p-8 rounded-2xl text-center border border-slate-200">
+                        <p class="text-sm text-slate-500">Nenhum produto encontrado com o termo "<span class="font-semibold text-slate-800">${escapeHtml(query)}</span>".</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            allMatchedProducts.forEach((item, index) => {
+                const comp = getPriceComparison(item.product.name, item.product.price);
+                const isCheapestBadge = index === 0 && allMatchedProducts.length > 1 ? '<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider mb-1.5 inline-flex items-center gap-1"><i class="fa-solid fa-crown"></i> Melhor Preço Geral</span>' : '';
+                
+                html += `
+                    <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200/85 flex flex-col justify-between gap-3 relative overflow-hidden">
+                        <div>
+                            ${isCheapestBadge}
+                            <h4 class="font-bold text-slate-900 text-sm sm:text-base">${escapeHtml(item.product.name)}</h4>
+                            <p class="text-xs text-indigo-600 font-semibold flex items-center gap-1 mt-1 truncate">
+                                <i class="fa-solid fa-store flex-shrink-0"></i> <span class="truncate">${escapeHtml(item.marketName)}</span>
+                            </p>
+                        </div>
+                        <div class="flex justify-between items-end pt-3 border-t border-slate-100 gap-2">
+                            <div>
+                                ${comp.badge || ''}
+                            </div>
+                            <span class="text-base sm:text-lg font-bold text-slate-900 flex-shrink-0">
+                                R$ ${item.product.price.toFixed(2).replace('.', ',')}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            resultsGrid.innerHTML = html;
+        }
+
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            handleSearch();
+        }
+
+        // Utility to prevent XSS injection in names
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        // Initial load
+        window.onload = function() {
+            renderHome();
+        };
+    </script>
+</body>
+</html>
